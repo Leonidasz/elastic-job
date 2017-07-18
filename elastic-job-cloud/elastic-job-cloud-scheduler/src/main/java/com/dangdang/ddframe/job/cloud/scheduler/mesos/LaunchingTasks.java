@@ -45,8 +45,12 @@ public final class LaunchingTasks {
     
     public LaunchingTasks(final Collection<JobContext> eligibleJobContexts) {
         eligibleJobContextsMap = new HashMap<>(eligibleJobContexts.size(), 1);
+        int sum = 0;
         for (JobContext each : eligibleJobContexts) {
             eligibleJobContextsMap.put(each.getJobConfig().getJobName(), each);
+            if (++sum >= 500) {
+                break;
+            }
         }
     }
     
