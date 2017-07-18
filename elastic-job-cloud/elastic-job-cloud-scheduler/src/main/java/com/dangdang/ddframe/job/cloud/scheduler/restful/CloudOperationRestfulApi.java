@@ -155,6 +155,7 @@ public final class CloudOperationRestfulApi {
      */
     @GET
     @Path("/task/sandbox/{taskId}")
+    @Produces(MediaType.TEXT_PLAIN)
     public String getTaskSandbox(@PathParam("taskId") final String taskId) {
         return facadeService.getTaskSandbox(taskId);
     }
