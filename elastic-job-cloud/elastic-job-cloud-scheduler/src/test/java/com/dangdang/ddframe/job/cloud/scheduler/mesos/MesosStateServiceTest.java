@@ -76,7 +76,8 @@ public class MesosStateServiceTest extends AbstractCloudRestfulApiTest {
     public void assertTaskSandbox() {
         when(registryCenter.getDirectly(HANode.FRAMEWORK_ID_NODE)).thenReturn("d8701508-41b7-471e-9b32-61cf824a660d-0000");
         MesosStateService service = new MesosStateService(registryCenter);
-        assertThat(service.getMesosSandbox("foo_app", "foo_app@-@d8701508-41b7-471e-9b32-61cf824a660d-S0"), is("127.0.0.1:9050/#/agents/d8701508-41b7-471e-9b32-61cf824a660d-S0/browse?path="
+        assertThat(service
+                .getMesosSandbox("cpu_job_1@-@1@-@READY@-@d8701508-41b7-471e-9b32-61cf824a660d-S0@-@ede114f0-f2db-4bad-b0e0-e820a7d19c59"), is("127.0.0.1:9050/#/agents/d8701508-41b7-471e-9b32-61cf824a660d-S0/browse?path="
                 + "/home/gaohongtao/mesos/work-1.1.0/slaves/d8701508-41b7-471e-9b32-61cf824a660d-S0/frameworks/d8701508-41b7-471e-9b32-61cf824a660d-0000"
                 + "/executors/foo_app@-@d8701508-41b7-471e-9b32-61cf824a660d-S0"
                 + "/runs/53fb4af7-aee2-44f6-9e47-6f418d9f27e1"));

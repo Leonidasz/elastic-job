@@ -146,4 +146,16 @@ public final class CloudOperationRestfulApi {
     public Collection<TaskFullViewInfo> getTaskFullViewInfo(@PathParam("jobName") final String jobName) throws JSONException {
         return facadeService.getTaskFullViewInfo(jobName);
     }
+    
+    /**
+     * 获取任务沙箱信息.
+     * 
+     * @param taskId 任务Id
+     * @return 沙箱路径
+     */
+    @GET
+    @Path("/task/sandbox/{taskId}")
+    public String getTaskSandbox(@PathParam("taskId") final String taskId) {
+        return facadeService.getTaskSandbox(taskId);
+    }
 }
