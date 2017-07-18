@@ -22,9 +22,12 @@ import com.dangdang.ddframe.job.reg.base.CoordinatorRegistryCenter;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import lombok.Builder;
 import lombok.Getter;
@@ -86,12 +89,11 @@ public class MesosStateService {
     
     /**
      * 获取任务沙箱信息.
-     *
-     * @param appName 作业云配置App名称
-     * @param executorId 执行器主键
+     * 
+     * @param taskId 作业云配置App名称
      * @return 沙箱信息
      */
-    public String getMesosSandbox(final String appName, final String executorId) {
+    public String getMesosSandbox(final String taskId) {
         Optional<JsonObject> stateOptional = MesosEndpointService.getInstance().state(JsonObject.class);
         if (!stateOptional.isPresent()) {
             return "";
@@ -99,34 +101,86 @@ public class MesosStateService {
         JsonObject state = stateOptional.get();
         StringBuilder taskSandbox = new StringBuilder();
         taskSandbox.append(state.get("pid").getAsString().split("@")[1]).append("/#/agents/");
-        for (JsonObject each : findExecutors(state.getAsJsonArray("frameworks"), appName)) {
-            JsonArray slaves = state.getAsJsonArray("slaves");
-            String slaveHost = null;
-            for (int i = 0; i < slaves.size(); i++) {
-                JsonObject slave = slaves.get(i).getAsJsonObject();
-                if (each.get("slave_id").getAsString().equals(slave.get("id").getAsString())) {
-                    taskSandbox.append(slave.get("id").getAsString()).append("/browse?path=");
-                    slaveHost = slave.get("pid").getAsString().split("@")[1];
-                }
+        Optional<String> frameworkIDOptional = frameworkIDService.fetch();
+        final String frameworkID;
+        if (frameworkIDOptional.isPresent()) {
+            frameworkID = frameworkIDOptional.get();
+        } else {
+            return "";
+        }
+        Optional<JsonElement> masterFrameworkInfoOptional = Iterables.tryFind(state.getAsJsonArray("frameworks"), new Predicate<JsonElement>() {
+            @Override
+            public boolean apply(final JsonElement input) {
+                return input.getAsJsonObject().get("id").getAsString().equals(frameworkID);
             }
-            Preconditions.checkNotNull(slaveHost);
-            Optional<JsonObject> slaveStateOptional = MesosEndpointService.getInstance().state(String.format("http://%s", slaveHost), JsonObject.class);
-            if (!slaveStateOptional.isPresent()) {
-                continue;
+        });
+        JsonObject masterFrameworkInfo;
+        if (masterFrameworkInfoOptional.isPresent()) {
+            masterFrameworkInfo = masterFrameworkInfoOptional.get().getAsJsonObject();
+        } else {
+            return "";
+        }
+        Optional<JsonElement> taskInfoOptional = Iterables.tryFind(masterFrameworkInfo.getAsJsonArray("tasks"), new Predicate<JsonElement>() {
+            @Override
+            public boolean apply(final JsonElement input) {
+                return taskId.equals(input.getAsJsonObject().get("id").getAsString());
             }
-            JsonObject slaveState = slaveStateOptional.get();
-            Collection<JsonObject> executorsOnSlave = findExecutors(slaveState.getAsJsonArray("frameworks"), appName);
-            for (JsonObject executorOnSlave : executorsOnSlave) {
-                if (executorId.equals(executorOnSlave.get("id").getAsString())) {
-                    String directory = executorOnSlave.get("directory").getAsString();
-                    if (null != directory) {
-                        taskSandbox.append(directory);
-                        return taskSandbox.toString();
-                    }
-                }
+        });
+        final JsonObject taskInfo;
+        if (taskInfoOptional.isPresent()) {
+            taskInfo = taskInfoOptional.get().getAsJsonObject();
+        } else {
+            return "";
+        }
+        Optional<JsonElement> slaveInfoOptional = Iterables.tryFind(state.getAsJsonArray("slaves"), new Predicate<JsonElement>() {
+            @Override
+            public boolean apply(final JsonElement input) {
+                return taskInfo.get("slave_id").getAsString().equals(input.getAsJsonObject().get("id").getAsString());
+            }
+        });
+        
+        final JsonObject slaveInfo;
+        if (slaveInfoOptional.isPresent()) {
+            slaveInfo = slaveInfoOptional.get().getAsJsonObject();
+        } else {
+            return "";
+        }
+        taskSandbox.append(slaveInfo.get("id").getAsString()).append("/browse?path=");
+        Optional<String> directoryOptional = getSandboxDirectoryFromSlave(slaveInfo.get("pid").getAsString().split("@")[1], frameworkID, taskInfo.get("executor_id").getAsString());
+        if (!directoryOptional.isPresent()) {
+            return "";
+        }
+        return taskSandbox.append(directoryOptional.get()).toString();
+    }
+    
+    private Optional<String> getSandboxDirectoryFromSlave(final String slaveHost, final String frameworkID, final String executorId) {
+        Optional<JsonObject> slaveStateOptional = MesosEndpointService.getInstance().state(String.format("http://%s", slaveHost), JsonObject.class);
+        if (!slaveStateOptional.isPresent()) {
+            return Optional.absent();
+        }
+        JsonObject slaveState = slaveStateOptional.get();
+        Optional<JsonElement> slaveFrameworkInfoOptional = Iterables.tryFind(slaveState.getAsJsonArray("frameworks"), new Predicate<JsonElement>() {
+            @Override
+            public boolean apply(final JsonElement input) {
+                return input.getAsJsonObject().get("id").getAsString().equals(frameworkID);
+            }
+        });
+        if (!slaveFrameworkInfoOptional.isPresent()) {
+            return Optional.absent();
+        }
+        Optional<JsonElement> executorInfoOptional = Iterables.tryFind(slaveFrameworkInfoOptional.get().getAsJsonObject().get("executors").getAsJsonArray(), new Predicate<JsonElement>() {
+            @Override
+            public boolean apply(final JsonElement input) {
+                return executorId.equals(input.getAsJsonObject().get("id").getAsString());
+            }
+        });
+        if (executorInfoOptional.isPresent()) {
+            String directory = executorInfoOptional.get().getAsJsonObject().get("directory").getAsString();
+            if (null != directory) {
+                return Optional.of(directory);
             }
         }
-        return "";
+        return Optional.absent();
     }
     
     /**

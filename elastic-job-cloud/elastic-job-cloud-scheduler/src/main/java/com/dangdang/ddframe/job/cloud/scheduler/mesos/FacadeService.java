@@ -417,7 +417,7 @@ public final class FacadeService {
                     statusInfo = RUNNING_STATUS_COMMENT;
                 }
                 String taskId = each.getId();
-                result.add(new TaskFullViewInfo(taskId, this.getHostNameByTaskId(taskId), statusInfo, mesosStateService.getMesosSandbox(appName, each.getExecutorId(appName))));
+                result.add(new TaskFullViewInfo(taskId, this.getHostNameByTaskId(taskId), statusInfo, mesosStateService.getMesosSandbox(each.getId())));
             }
         }
         if (failoverTasks.size() > 0) {
@@ -434,10 +434,20 @@ public final class FacadeService {
                 if (slaveOptional.isPresent()) {
                     serverIp = slaveOptional.get().getAsJsonObject().get("hostname").getAsString();
                 }
-                result.add(new TaskFullViewInfo(taskContext.getId(), serverIp, FAILOVER_STATUS, mesosStateService.getMesosSandbox(appName, taskContext.getExecutorId(appName))));
+                result.add(new TaskFullViewInfo(taskContext.getId(), serverIp, FAILOVER_STATUS, mesosStateService.getMesosSandbox(each.getOriginalTaskId())));
             }
         }
         return result;
+    }
+    
+    /**
+     * 获取任务沙箱路径.
+     * 
+     * @param taskId 任务Id
+     * @return 沙箱路径
+     */
+    public String getTaskSandbox(final String taskId) {
+        return mesosStateService.getMesosSandbox(taskId);
     }
     
     /**
@@ -457,4 +467,5 @@ public final class FacadeService {
         // TODO 停止作业调度
         runningService.clear();
     }
+    
 }
