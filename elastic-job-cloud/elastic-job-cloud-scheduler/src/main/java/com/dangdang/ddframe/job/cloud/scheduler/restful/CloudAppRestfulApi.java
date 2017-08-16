@@ -22,17 +22,14 @@ import com.dangdang.ddframe.job.cloud.scheduler.config.app.CloudAppConfiguration
 import com.dangdang.ddframe.job.cloud.scheduler.config.app.CloudAppConfigurationService;
 import com.dangdang.ddframe.job.cloud.scheduler.config.job.CloudJobConfiguration;
 import com.dangdang.ddframe.job.cloud.scheduler.config.job.CloudJobConfigurationService;
+import com.dangdang.ddframe.job.cloud.scheduler.mesos.ExecutorService;
 import com.dangdang.ddframe.job.cloud.scheduler.mesos.MesosStateService;
-import com.dangdang.ddframe.job.cloud.scheduler.mesos.MesosStateService.ExecutorStateInfo;
 import com.dangdang.ddframe.job.cloud.scheduler.producer.ProducerManager;
 import com.dangdang.ddframe.job.cloud.scheduler.state.disable.app.DisableAppService;
 import com.dangdang.ddframe.job.exception.AppConfigurationException;
-import com.dangdang.ddframe.job.exception.JobSystemException;
 import com.dangdang.ddframe.job.reg.base.CoordinatorRegistryCenter;
 import com.dangdang.ddframe.job.util.json.GsonFactory;
 import com.google.common.base.Optional;
-import org.apache.mesos.Protos.ExecutorID;
-import org.apache.mesos.Protos.SlaveID;
 import org.codehaus.jettison.json.JSONException;
 
 import javax.ws.rs.Consumes;
@@ -69,11 +66,14 @@ public final class CloudAppRestfulApi {
     
     private final MesosStateService mesosStateService;
     
+    private final ExecutorService executorService;
+    
     public CloudAppRestfulApi() {
         appConfigService = new CloudAppConfigurationService(regCenter);
         jobConfigService = new CloudJobConfigurationService(regCenter);
         mesosStateService = new MesosStateService(regCenter);
         disableAppService = new DisableAppService(regCenter);
+        executorService = new ExecutorService(producerManager, mesosStateService);
     }
     
     /**
@@ -205,7 +205,7 @@ public final class CloudAppRestfulApi {
     public void deregister(@PathParam("appName") final String appName) {
         if (appConfigService.load(appName).isPresent()) {
             removeAppAndJobConfigurations(appName);
-            stopExecutors(appName);
+            executorService.clean(appName);
         }
     }
     
@@ -219,11 +219,16 @@ public final class CloudAppRestfulApi {
         appConfigService.remove(appName);
     }
     
-    private void stopExecutors(final String appName) {
-        Collection<ExecutorStateInfo> executorBriefInfo = mesosStateService.executors(appName);
-        for (ExecutorStateInfo each : executorBriefInfo) {
-            producerManager.sendFrameworkMessage(ExecutorID.newBuilder().setValue(each.getId()).build(),
-                    SlaveID.newBuilder().setValue(each.getSlaveId()).build(), "STOP".getBytes());
-        }
+    /**
+     * 重启应用.
+     * 
+     * @param appName 应用名称
+     * @return true 发送停止命令 false 没有发送停止命令
+     */
+    @POST
+    @Path("/{appName}/restart")
+    @Produces(MediaType.APPLICATION_JSON)
+    public boolean restart(@PathParam("appName") final String appName) {
+        return executorService.stop(appName);
     }
 }
