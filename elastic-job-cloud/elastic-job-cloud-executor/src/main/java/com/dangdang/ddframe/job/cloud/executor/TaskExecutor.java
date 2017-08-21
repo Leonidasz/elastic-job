@@ -68,6 +68,8 @@ public final class TaskExecutor implements Executor {
             dataSource.setUrl(data.get("event_trace_rdb_url"));
             dataSource.setPassword(data.get("event_trace_rdb_password"));
             dataSource.setUsername(data.get("event_trace_rdb_username"));
+            dataSource.setValidationQuery("SELECT 1");
+            dataSource.setTestOnBorrow(true);
             jobEventBus = new JobEventBus(new JobEventRdbConfiguration(dataSource));
         }
     }
