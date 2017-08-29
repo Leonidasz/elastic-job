@@ -24,6 +24,7 @@ import com.dangdang.ddframe.job.cloud.scheduler.config.job.CloudJobExecutionType
 import com.dangdang.ddframe.job.cloud.scheduler.env.BootstrapEnvironment;
 import com.dangdang.ddframe.job.cloud.scheduler.mesos.FacadeService;
 import com.dangdang.ddframe.job.cloud.scheduler.producer.ProducerManager;
+import com.dangdang.ddframe.job.cloud.scheduler.state.DebugService;
 import com.dangdang.ddframe.job.cloud.scheduler.state.failover.FailoverTaskInfo;
 import com.dangdang.ddframe.job.cloud.scheduler.statistics.StatisticManager;
 import com.dangdang.ddframe.job.context.TaskContext;
@@ -203,6 +204,13 @@ public final class CloudJobRestfulApi {
             facadeService.disableJob(jobName);
             producerManager.unschedule(jobName);
         }
+    }
+    
+    @GET
+    @Path("/{jobName}/debug")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Map<Integer, DebugService.Snapshot> debug(@PathParam("jobName") final String jobName) {
+        return DebugService.INSTANCE.capture(jobName);
     }
     
     /**

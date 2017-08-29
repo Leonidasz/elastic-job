@@ -18,6 +18,7 @@
 package com.dangdang.ddframe.job.cloud.scheduler.mesos;
 
 import com.dangdang.ddframe.job.cloud.scheduler.ha.FrameworkIDService;
+import com.dangdang.ddframe.job.cloud.scheduler.state.DebugService;
 import com.dangdang.ddframe.job.cloud.scheduler.statistics.StatisticManager;
 import com.dangdang.ddframe.job.context.TaskContext;
 import com.dangdang.ddframe.job.event.JobEventBus;
@@ -96,6 +97,7 @@ public final class SchedulerEngine implements Scheduler {
         log.trace("call statusUpdate task state is: {}, task id is: {}", taskStatus.getState(), taskId);
         jobEventBus.post(new JobStatusTraceEvent(jobName, taskContext.getId(), taskContext.getSlaveId(), Source.CLOUD_SCHEDULER, 
                 taskContext.getType(), String.valueOf(taskContext.getMetaInfo().getShardingItems()), State.valueOf(taskStatus.getState().name()), taskStatus.getMessage()));
+        DebugService.INSTANCE.recordTask(taskContext, taskStatus);
         switch (taskStatus.getState()) {
             case TASK_RUNNING:
                 if (!facadeService.load(jobName).isPresent()) {
