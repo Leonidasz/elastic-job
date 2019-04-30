@@ -22,10 +22,11 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.apache.mesos.MesosExecutorDriver;
 import org.apache.mesos.Protos;
+import org.springframework.context.ApplicationContext;
 
 /**
  * 云作业启动器.
- * 
+ *
  * <p>需将应用打包, 并在main方法中直接调用Bootstrap.execute方法</p>
  *
  * @author caohao
@@ -33,12 +34,21 @@ import org.apache.mesos.Protos;
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class JobBootstrap {
-    
+
     /**
      * 执行作业.
      */
     public static void execute() {
         MesosExecutorDriver driver = new MesosExecutorDriver(new TaskExecutor());
+        System.exit(Protos.Status.DRIVER_STOPPED == driver.run() ? 0 : -1);
+    }
+
+    /**
+     * 执行作业.
+     * 支持Springboot框架下的job
+     */
+    public static void execute(ApplicationContext ctx) {
+        MesosExecutorDriver driver = new MesosExecutorDriver(new TaskExecutor(ctx));
         System.exit(Protos.Status.DRIVER_STOPPED == driver.run() ? 0 : -1);
     }
 }

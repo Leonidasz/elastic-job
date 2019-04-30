@@ -35,6 +35,7 @@ import org.apache.mesos.Executor;
 import org.apache.mesos.ExecutorDriver;
 import org.apache.mesos.Protos;
 import org.apache.mesos.Protos.TaskInfo;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import java.util.HashMap;
@@ -48,17 +49,25 @@ import java.util.concurrent.ExecutorService;
  */
 @Slf4j
 public final class TaskExecutor implements Executor {
-    
+
     private final ExecutorService executorService;
-    
+
+    private final ApplicationContext ctx;
+
     private final Map<String, ClassPathXmlApplicationContext> applicationContexts = new HashMap<>();
-    
+
     private volatile JobEventBus jobEventBus = new JobEventBus();
-    
+
     public TaskExecutor() {
         executorService = new ExecutorServiceObject("cloud-task-executor", Runtime.getRuntime().availableProcessors() * 100).createExecutorService();
+        this.ctx = null;
     }
-    
+
+    public TaskExecutor(ApplicationContext ctx) {
+        executorService = new ExecutorServiceObject("cloud-task-executor", Runtime.getRuntime().availableProcessors() * 100).createExecutorService();
+        this.ctx = ctx;
+    }
+
     @Override
     public void registered(final ExecutorDriver executorDriver, final Protos.ExecutorInfo executorInfo, final Protos.FrameworkInfo frameworkInfo, final Protos.SlaveInfo slaveInfo) {
         if (!executorInfo.getData().isEmpty()) {
@@ -73,26 +82,26 @@ public final class TaskExecutor implements Executor {
             jobEventBus = new JobEventBus(new JobEventRdbConfiguration(dataSource));
         }
     }
-    
+
     @Override
     public void reregistered(final ExecutorDriver executorDriver, final Protos.SlaveInfo slaveInfo) {
     }
-    
+
     @Override
     public void disconnected(final ExecutorDriver executorDriver) {
     }
-    
+
     @Override
     public void launchTask(final ExecutorDriver executorDriver, final Protos.TaskInfo taskInfo) {
         executorService.submit(new TaskThread(executorDriver, taskInfo));
     }
-    
+
     @Override
     public void killTask(final ExecutorDriver executorDriver, final Protos.TaskID taskID) {
         executorDriver.sendStatusUpdate(Protos.TaskStatus.newBuilder().setTaskId(taskID).setState(Protos.TaskState.TASK_KILLED).build());
         DaemonTaskScheduler.shutdown(taskID);
     }
-    
+
     @Override
     public void frameworkMessage(final ExecutorDriver executorDriver, final byte[] bytes) {
         if (null != bytes && "STOP".equals(new String(bytes))) {
@@ -100,23 +109,23 @@ public final class TaskExecutor implements Executor {
             executorDriver.stop();
         }
     }
-    
+
     @Override
     public void shutdown(final ExecutorDriver executorDriver) {
     }
-    
+
     @Override
     public void error(final ExecutorDriver executorDriver, final String message) {
         log.error("call executor error, message is: {}", message);
     }
-    
+
     @RequiredArgsConstructor
     class TaskThread implements Runnable {
-        
+
         private final ExecutorDriver executorDriver;
-        
+
         private final TaskInfo taskInfo;
-        
+
         @Override
         public void run() {
             Thread.currentThread().setContextClassLoader(TaskThread.class.getClassLoader());
@@ -143,15 +152,17 @@ public final class TaskExecutor implements Executor {
                 throw ex;
             }
         }
-        
+
         private ElasticJob getElasticJobInstance(final JobConfigurationContext jobConfig) {
             if (!Strings.isNullOrEmpty(jobConfig.getBeanName()) && !Strings.isNullOrEmpty(jobConfig.getApplicationContext())) {
                 return getElasticJobBean(jobConfig);
-            } else {
+            } else if(null!=ctx) {
+                return getElasticJobBeanByCtx(jobConfig);
+            } else{
                 return getElasticJobClass(jobConfig);
             }
         }
-        
+
         private ElasticJob getElasticJobBean(final JobConfigurationContext jobConfig) {
             String applicationContextFile = jobConfig.getApplicationContext();
             if (null == applicationContexts.get(applicationContextFile)) {
@@ -163,7 +174,7 @@ public final class TaskExecutor implements Executor {
             }
             return (ElasticJob) applicationContexts.get(applicationContextFile).getBean(jobConfig.getBeanName());
         }
-        
+
         private ElasticJob getElasticJobClass(final JobConfigurationContext jobConfig) {
             String jobClass = jobConfig.getTypeConfig().getJobClass();
             try {
@@ -179,5 +190,16 @@ public final class TaskExecutor implements Executor {
                 throw new JobSystemException("Elastic-Job: Class '%s' initialize failure, the error message is '%s'.", jobClass, ex.getMessage());
             }
         }
+
+        private ElasticJob getElasticJobBeanByCtx(final JobConfigurationContext jobConfig) {
+            String jobClass = jobConfig.getTypeConfig().getJobClass();
+            try {
+                Class<?> elasticJobClass = Class.forName(jobClass);
+                return (ElasticJob) ctx.getBean(elasticJobClass);
+            } catch (final ReflectiveOperationException ex) {
+                throw new JobSystemException("Elastic-Job: Class '%s' initialize failure, the error message is '%s'.", jobClass, ex.getMessage());
+            }
+        }
+
     }
 }
