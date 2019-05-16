@@ -29,6 +29,7 @@ import com.dangdang.ddframe.job.lite.internal.server.ServerService;
 import com.dangdang.ddframe.job.lite.internal.sharding.ExecutionService;
 import com.dangdang.ddframe.job.lite.internal.sharding.ShardingService;
 import com.dangdang.ddframe.job.reg.base.CoordinatorRegistryCenter;
+import io.prometheus.client.Gauge;
 
 import java.util.List;
 
@@ -38,6 +39,13 @@ import java.util.List;
  * @author zhangliang
  */
 public final class SchedulerFacade {
+
+    //config metrics
+    //esjob初始化配置指标
+    private static final Gauge esjob_config_init_time_seconds = Gauge.build().name("esjob_config_init_time_seconds")
+            .help("The esjob configuration init time in second.")
+            .labelNames("job_name","job_type","cron","sharding_count")
+            .register();
     
     private final String jobName;
     
@@ -101,7 +109,14 @@ public final class SchedulerFacade {
      */
     public LiteJobConfiguration updateJobConfiguration(final LiteJobConfiguration liteJobConfig) {
         configService.persist(liteJobConfig);
-        return configService.load(false);
+        LiteJobConfiguration liteJobConfiguration = configService.load(false);
+        //初始化作业配置指标
+        esjob_config_init_time_seconds.labels(liteJobConfiguration.getJobName(),
+                liteJobConfiguration.getTypeConfig().getJobType().name(),
+                liteJobConfiguration.getTypeConfig().getCoreConfig().getCron(),
+                String.valueOf(liteJobConfiguration.getTypeConfig().getCoreConfig().getShardingTotalCount())
+        ).setToCurrentTime();
+        return liteJobConfiguration;
     }
     
     /**

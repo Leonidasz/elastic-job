@@ -36,6 +36,7 @@ import com.dangdang.ddframe.job.lite.internal.failover.FailoverService;
 import com.dangdang.ddframe.job.lite.internal.sharding.ShardingService;
 import com.dangdang.ddframe.job.reg.base.CoordinatorRegistryCenter;
 import com.google.common.base.Strings;
+import io.prometheus.client.Gauge;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
@@ -48,6 +49,13 @@ import java.util.List;
  */
 @Slf4j
 public final class LiteJobFacade implements JobFacade {
+
+    //config metrics
+    //esjob加载配置指标
+    private static final Gauge esjob_config_load_time_seconds = Gauge.build().name("esjob_config_load_time_seconds")
+            .help("The esjob configuration load time in second.")
+            .labelNames("job_name","job_type","cron","sharding_count")
+            .register();
     
     private final ConfigurationService configService;
     
@@ -75,7 +83,13 @@ public final class LiteJobFacade implements JobFacade {
     
     @Override
     public LiteJobConfiguration loadJobRootConfiguration(final boolean fromCache) {
-        return configService.load(fromCache);
+        LiteJobConfiguration jobConfiguration = configService.load(fromCache);
+        esjob_config_load_time_seconds.labels(jobConfiguration.getJobName(),
+                jobConfiguration.getTypeConfig().getJobType().name(),
+                jobConfiguration.getTypeConfig().getCoreConfig().getCron(),
+                String.valueOf(jobConfiguration.getTypeConfig().getCoreConfig().getShardingTotalCount())
+                ).setToCurrentTime();
+        return jobConfiguration;
     }
     
     @Override

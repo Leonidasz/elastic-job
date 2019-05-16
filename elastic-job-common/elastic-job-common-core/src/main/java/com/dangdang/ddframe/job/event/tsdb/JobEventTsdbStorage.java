@@ -36,13 +36,13 @@ final class JobEventTsdbStorage {
 
     //excute metrics
     //esjob最近一次执行的开始时间
-    private static final Gauge esjob_start_time_mseconds = Gauge.build().name("esjob_start_time_seconds")
+    private static final Gauge esjob_start_time_mseconds = Gauge.build().name("esjob_start_time_mseconds")
             .help("The last start time of job in mseconds.")
             .labelNames("job_name","task_id","instance_ip","source","sharding_item")
             .register();
 
     //esjob最近一次执行的完成时间
-    private static final Gauge esjob_complete_time_mseconds = Gauge.build().name("esjob_complete_time_seconds")
+    private static final Gauge esjob_complete_time_mseconds = Gauge.build().name("esjob_complete_time_mseconds")
             .help("The last complete time of job in mseconds.")
             .labelNames("job_name","task_id","instance_ip","source","sharding_item","is_success")
             .register();

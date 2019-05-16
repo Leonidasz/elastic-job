@@ -7,6 +7,7 @@ import com.dangdang.ddframe.job.lite.internal.schedule.JobScheduleController;
 import com.dangdang.ddframe.job.lite.internal.server.ServerService;
 import com.dangdang.ddframe.job.lite.internal.sharding.ShardingService;
 import com.dangdang.ddframe.job.reg.base.CoordinatorRegistryCenter;
+import io.prometheus.client.Gauge;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.framework.state.ConnectionStateListener;
@@ -17,6 +18,12 @@ import org.apache.curator.framework.state.ConnectionStateListener;
  * @author zhangliang
  */
 public final class RegistryCenterConnectionStateListener implements ConnectionStateListener {
+
+    //registry center connection state metrics
+    //注册中心连接状态
+    private static final Gauge esjob_regcenter_con_status = Gauge.build().name("esjob_regcenter_con_status")
+            .help("The registry center connection status.")
+            .register();
     
     private final String jobName;
     
@@ -34,10 +41,12 @@ public final class RegistryCenterConnectionStateListener implements ConnectionSt
         instanceService = new InstanceService(regCenter, jobName);
         shardingService = new ShardingService(regCenter, jobName);
         executionService = new ExecutionService(regCenter, jobName);
+        esjob_regcenter_con_status.set(1);
     }
     
     @Override
     public void stateChanged(final CuratorFramework client, final ConnectionState newState) {
+        esjob_regcenter_con_status.set(newState.isConnected()?1:0);
         if (JobRegistry.getInstance().isShutdown(jobName)) {
             return;
         }

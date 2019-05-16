@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.dangdang</groupId>
     <artifactId>elastic-job</artifactId>
-    <version>2.1.6-PR4</version>
+    <version>2.1.6-PR6</version>
     <packaging>pom</packaging>
     <name>${project.artifactId}</name>
     <description>Elastic-Job - distributed scheduled job solution</description>
@@ -638,7 +638,7 @@
         <url>https://github.com/terrymanu/dangdangdotcom/elastic-job</url>
     </scm>
     
-    <mailingLists>
+    <!--<mailingLists>
         <mailingList>
             <name>ZhangLiang</name>
             <post>zhangliang@dangdang.com</post>
@@ -647,9 +647,9 @@
             <name>CaoHao</name>
             <post>caohao@dangdang.com</post>
         </mailingList>
-    </mailingLists>
+    </mailingLists>-->
     
-    <developers>
+    <!--<developers>
         <developer>
             <id>zhangliang</id>
             <name>ZhangLiang</name>
@@ -662,7 +662,7 @@
             <email>caohao@dangdang.com</email>
             <timezone>8</timezone>
         </developer>
-    </developers>
+    </developers>-->
 
     <distributionManagement>
         <repository>

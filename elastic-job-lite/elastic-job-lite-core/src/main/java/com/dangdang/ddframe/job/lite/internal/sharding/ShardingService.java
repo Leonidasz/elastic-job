@@ -32,6 +32,7 @@ import com.dangdang.ddframe.job.lite.internal.storage.JobNodeStorage;
 import com.dangdang.ddframe.job.lite.internal.storage.TransactionExecutionCallback;
 import com.dangdang.ddframe.job.reg.base.CoordinatorRegistryCenter;
 import com.dangdang.ddframe.job.util.concurrent.BlockUtils;
+import io.prometheus.client.Gauge;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.curator.framework.api.transaction.CuratorTransactionFinal;
@@ -48,6 +49,13 @@ import java.util.Map;
  */
 @Slf4j
 public final class ShardingService {
+
+    //leadaer sharding metrics
+    //esjob分片信息
+    private static final Gauge esjob_sharding_count = Gauge.build().name("esjob_sharding_count")
+            .help("The total count of sharding.")
+            .labelNames("job_name")
+            .register();
     
     private final String jobName;
     
@@ -116,6 +124,7 @@ public final class ShardingService {
         resetShardingInfo(shardingTotalCount);
         JobShardingStrategy jobShardingStrategy = JobShardingStrategyFactory.getStrategy(liteJobConfig.getJobShardingStrategyClass());
         jobNodeStorage.executeInTransaction(new PersistShardingInfoTransactionExecutionCallback(jobShardingStrategy.sharding(availableJobInstances, jobName, shardingTotalCount)));
+        esjob_sharding_count.labels(jobName).set(shardingTotalCount);
         log.debug("Job '{}' sharding complete.", jobName);
     }
     

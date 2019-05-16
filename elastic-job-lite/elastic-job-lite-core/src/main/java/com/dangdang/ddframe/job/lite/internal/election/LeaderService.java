@@ -23,6 +23,7 @@ import com.dangdang.ddframe.job.lite.internal.storage.JobNodeStorage;
 import com.dangdang.ddframe.job.lite.internal.storage.LeaderExecutionCallback;
 import com.dangdang.ddframe.job.reg.base.CoordinatorRegistryCenter;
 import com.dangdang.ddframe.job.util.concurrent.BlockUtils;
+import io.prometheus.client.Gauge;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,6 +34,13 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public final class LeaderService {
+
+    //leadaer election metrics
+    //esjob最近一次选主时间
+    private static final Gauge esjob_electleader_time_seconds = Gauge.build().name("esjob_electleader_time_seconds")
+            .help("The last time of elect leader in seconds.")
+            .labelNames("job_name","job_instance_id")
+            .register();
     
     private final String jobName;
     
@@ -107,6 +115,7 @@ public final class LeaderService {
         public void execute() {
             if (!hasLeader()) {
                 jobNodeStorage.fillEphemeralJobNode(LeaderNode.INSTANCE, JobRegistry.getInstance().getJobInstance(jobName).getJobInstanceId());
+                esjob_electleader_time_seconds.labels(jobName,JobRegistry.getInstance().getJobInstance(jobName).getJobInstanceId()).setToCurrentTime();
             }
         }
     }

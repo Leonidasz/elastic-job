@@ -21,6 +21,7 @@ import com.dangdang.ddframe.job.lite.internal.listener.AbstractJobListener;
 import com.dangdang.ddframe.job.lite.internal.listener.AbstractListenerManager;
 import com.dangdang.ddframe.job.lite.internal.schedule.JobRegistry;
 import com.dangdang.ddframe.job.reg.base.CoordinatorRegistryCenter;
+import io.prometheus.client.Gauge;
 import org.apache.curator.framework.recipes.cache.TreeCacheEvent.Type;
 
 /**
@@ -30,6 +31,13 @@ import org.apache.curator.framework.recipes.cache.TreeCacheEvent.Type;
  * @author zhangliang
  */
 public final class RescheduleListenerManager extends AbstractListenerManager {
+
+    //registry reschedule listener metrics
+    //esjob重新调度时间
+    private static final Gauge esjob_reschedule_time_seconds = Gauge.build().name("esjob_reschedule_time_seconds")
+            .help("The last time of esjob rescheduled in seconds.")
+            .labelNames("job_name")
+            .register();
     
     private final ConfigurationNode configNode;
     
@@ -52,6 +60,7 @@ public final class RescheduleListenerManager extends AbstractListenerManager {
         protected void dataChanged(final String path, final Type eventType, final String data) {
             if (configNode.isConfigPath(path) && Type.NODE_UPDATED == eventType && !JobRegistry.getInstance().isShutdown(jobName)) {
                 JobRegistry.getInstance().getJobScheduleController(jobName).rescheduleJob(LiteJobConfigurationGsonFactory.fromJson(data).getTypeConfig().getCoreConfig().getCron());
+                esjob_reschedule_time_seconds.labels(jobName).setToCurrentTime();
             }
         }
     }
