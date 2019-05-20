@@ -40,26 +40,26 @@ public final class JobTriggerListener extends TriggerListenerSupport {
     //esjob最近一次fire时间
     private static final Gauge esjob_fire_time_mseconds = Gauge.build().name("esjob_fire_time_mseconds")
             .help("The last fire time of job in mseconds.")
-            .labelNames("job_name")
+            .labelNames("job_name","sharding_items")
             .register();
 
     //esjob最近一次scheduledfire时间
     private static final Gauge esjob_scheduledfire_time_mseconds = Gauge.build().name("esjob_scheduledfire_time_mseconds")
             .help("The last scheduledfire time of job in mseconds.")
-            .labelNames("job_name")
+            .labelNames("job_name","sharding_items")
             .register();
 
     //esjob上一次fire时间
     private static final Gauge esjob_prefire_time_mseconds = Gauge.build().name("esjob_prefire_time_mseconds")
             .help("The previous fire time of job in mseconds.")
-            .labelNames("job_name")
+            .labelNames("job_name","sharding_items")
             .register();
 
     //esjob下一次fire时间
     //如果当前时间已经超过了esjob下一次的fire时间，说明作业有misfire产生
     private static final Gauge esjob_nextfire_time_mseconds = Gauge.build().name("esjob_nextfire_time_mseconds")
             .help("The next fire time of job in mseconds.")
-            .labelNames("job_name")
+            .labelNames("job_name","sharding_items")
             .register();
 
     //misfire metrics
@@ -72,7 +72,7 @@ public final class JobTriggerListener extends TriggerListenerSupport {
     //esjob misfire trigger触发总次数
     private static final Counter esjob_misfire_trigger_total = Counter.build().name("esjob_misfire_trigger_total")
             .help("The total num of job misfired triggered.")
-            .labelNames("job_name")
+            .labelNames("job_name","sharding_items")
             .register();
 
     private final ExecutionService executionService;
@@ -86,19 +86,10 @@ public final class JobTriggerListener extends TriggerListenerSupport {
 
     @Override
     public void triggerFired(Trigger trigger, JobExecutionContext context) {
-        /*log.info("### trigger StartTime : {} ###",trigger.getStartTime());
-        log.info("### trigger PreviousFireTime : {} ###",trigger.getPreviousFireTime().toString());
-        log.info("### trigger NextFireTime : {} ###",trigger.getNextFireTime().toString());
-
-        log.info("### context ScheduledFireTime : {} ###",context.getScheduledFireTime().toString());
-        log.info("### context FireTime : {} ###",context.getFireTime().toString());
-        log.info("### context PreviousFireTime : {} ###",context.getPreviousFireTime() == null ? "": context.getPreviousFireTime().toString());
-        log.info("### context NextFireTime() : {} ###",context.getNextFireTime());*/
-
-        esjob_fire_time_mseconds.labels(trigger.getJobKey().getName()).set(context.getFireTime().getTime());
-        esjob_scheduledfire_time_mseconds.labels(trigger.getJobKey().getName()).set(context.getScheduledFireTime().getTime());
-        esjob_prefire_time_mseconds.labels(trigger.getJobKey().getName()).set(context.getPreviousFireTime() == null ? context.getScheduledFireTime().getTime():context.getPreviousFireTime().getTime());
-        esjob_nextfire_time_mseconds.labels(trigger.getJobKey().getName()).set(context.getNextFireTime().getTime());
+        esjob_fire_time_mseconds.labels(trigger.getJobKey().getName(),shardingService.getLocalShardingItems().toString()).set(context.getFireTime().getTime());
+        esjob_scheduledfire_time_mseconds.labels(trigger.getJobKey().getName(),shardingService.getLocalShardingItems().toString()).set(context.getScheduledFireTime().getTime());
+        esjob_prefire_time_mseconds.labels(trigger.getJobKey().getName(),shardingService.getLocalShardingItems().toString()).set(context.getPreviousFireTime() == null ? context.getScheduledFireTime().getTime():context.getPreviousFireTime().getTime());
+        esjob_nextfire_time_mseconds.labels(trigger.getJobKey().getName(),shardingService.getLocalShardingItems().toString()).set(context.getNextFireTime().getTime());
     }
 
 
